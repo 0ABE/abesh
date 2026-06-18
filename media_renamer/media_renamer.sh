@@ -133,6 +133,30 @@ is_video_file() {
 }
 
 # Extract title from existing filename
+clean_extracted_title() {
+    local title="$1"
+
+    # Normalize spacing/separators first.
+    title=$(echo "$title" | sed -E 's/[_-]+/ /g' | sed -E 's/[[:space:]]+/ /g' | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
+
+    # Drop leading episode markers so we do not duplicate numbering in output.
+    # Examples removed: "Episode 9", "Ep 9", "E09", with optional trailing punctuation.
+    title=$(echo "$title" | sed -E 's/^(([Ee]pisode|[Ee]p)[[:space:]]*[0-9]+|[Ee][0-9]+)[[:space:]]*([:.\-]+[[:space:]]*)?//')
+
+    # Final trim/cleanup in case separators were left behind.
+    # Only trim separator characters; keep meaningful punctuation like parentheses.
+    title=$(echo "$title" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
+    title=$(echo "$title" | sed -E 's/^[-:._[:space:]]+//; s/[-:._[:space:]]+$//')
+    title=$(echo "$title" | sed -E 's/[[:space:]]+/ /g')
+
+    if [[ -n "$title" ]]; then
+        echo "$title"
+        return 0
+    fi
+
+    return 1
+}
+
 extract_title() {
     local filename="$1"
     local basename="${filename%.*}"
@@ -142,50 +166,58 @@ extract_title() {
     
     # Pattern 1: "ShowName Part X - Title" or "ShowName Part X Title"
     if [[ "$base_name_only" =~ Part[[:space:]]*[0-9]+[[:space:]]*-[[:space:]]*(.+)$ ]]; then
-        echo "${BASH_REMATCH[1]}" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
-        return 0
+        if clean_extracted_title "${BASH_REMATCH[1]}"; then
+            return 0
+        fi
     fi
     
     # Pattern 2: "ShowName_E01_Title" or "ShowName E01 Title"
     if [[ "$base_name_only" =~ ^.*[_[:space:]]+E[0-9]+[_[:space:]]+(.+)$ ]]; then
-        echo "${BASH_REMATCH[1]}" | sed 's/[_-]/ /g' | sed 's/  */ /g'
-        return 0
+        if clean_extracted_title "${BASH_REMATCH[1]}"; then
+            return 0
+        fi
     fi
     
     # Pattern 3: "ShowName - Title" (general hyphen separator)
     if [[ "$base_name_only" =~ ^[^-]+-[[:space:]]*(.+)$ ]]; then
-        echo "${BASH_REMATCH[1]}" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
-        return 0
+        if clean_extracted_title "${BASH_REMATCH[1]}"; then
+            return 0
+        fi
     fi
     
     # Pattern 4: "ShowName Episode X - Title" or "ShowName Ep X - Title"
     if [[ "$base_name_only" =~ (Episode|Ep)[[:space:]]*[0-9]+[[:space:]]*-[[:space:]]*(.+)$ ]]; then
-        echo "${BASH_REMATCH[2]}" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
-        return 0
+        if clean_extracted_title "${BASH_REMATCH[2]}"; then
+            return 0
+        fi
     fi
     
     # Pattern 5: "ShowName S01E01 - Title" or "ShowName_S01E01_Title"
     if [[ "$base_name_only" =~ S[0-9]+E[0-9]+[_[:space:]]*-?[_[:space:]]*(.+)$ ]]; then
-        echo "${BASH_REMATCH[1]}" | sed 's/[_-]/ /g' | sed 's/  */ /g' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
-        return 0
+        if clean_extracted_title "${BASH_REMATCH[1]}"; then
+            return 0
+        fi
     fi
     
     # Pattern 6: "ShowName [episode_number] Title" (brackets)
     if [[ "$base_name_only" =~ \[[0-9]+\][[:space:]]*(.+)$ ]]; then
-        echo "${BASH_REMATCH[1]}" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
-        return 0
+        if clean_extracted_title "${BASH_REMATCH[1]}"; then
+            return 0
+        fi
     fi
     
     # Pattern 7: "ShowName (episode_number) Title" (parentheses)
     if [[ "$base_name_only" =~ \([0-9]+\)[[:space:]]*(.+)$ ]]; then
-        echo "${BASH_REMATCH[1]}" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
-        return 0
+        if clean_extracted_title "${BASH_REMATCH[1]}"; then
+            return 0
+        fi
     fi
     
     # Pattern 8: "ShowName_Title" or "ShowName Title" (underscore or space, no numbers)
     if [[ "$base_name_only" =~ ^[^0-9]*[_[:space:]]+([^0-9].*)$ ]] && [[ ! "$base_name_only" =~ Part|Episode|Ep|S[0-9]|E[0-9] ]]; then
-        echo "${BASH_REMATCH[1]}" | sed 's/[_-]/ /g' | sed 's/  */ /g' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
-        return 0
+        if clean_extracted_title "${BASH_REMATCH[1]}"; then
+            return 0
+        fi
     fi
     
     # No title found

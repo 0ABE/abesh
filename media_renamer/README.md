@@ -79,7 +79,7 @@ The script automatically extracts episode titles from existing filenames using 8
 ### TV Series with Extracted Titles
 ```bash
 # Input: "ShowName Part 1 - Great Episode.mp4"
-./media_renamer.sh -s 1 -e 1 -y 2024 -n "Show Name" -a *.mp4
+./media_renamer.sh -s 1 -e 1 -y 2024 -n "Show Name" *.mp4
 # Output: "Show Name (2024) - S01E01 - Great Episode.mp4"
 ```
 
@@ -111,7 +111,7 @@ The script automatically extracts episode titles from existing filenames using 8
 2. **Use dry-run first** (`-d`) to preview changes
 3. **Consistent naming** across entire series/collections
 4. **Descriptive show names** help with metadata matching
-5. **Auto-extract titles** (`-a`) for better organization
+5. **Auto-extract titles** is enabled by default; use `--no-auto-titles` to disable
 
 ## Supported Formats
 
